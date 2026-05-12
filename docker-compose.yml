@@ -1,0 +1,51 @@
+# 新文件: docker-compose.yml
+version: '3.8'
+
+services:
+  rag-app:
+    build: .
+    container_name: rag-assistant
+    ports:
+      - "8000:8000"
+    volumes:
+      # 挂载文档目录（方便更新文档）
+      - ./docs:/app/docs
+      # 持久化向量库
+      - ./chroma_db:/app/chroma_db
+      # 日志
+      - ./logs:/app/logs
+    environment:
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-dashscope}
+      - VECTOR_DB_TYPE=${VECTOR_DB_TYPE:-chroma}
+      - CHUNK_SIZE=${CHUNK_SIZE:-800}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-100}
+      - TOP_K=${TOP_K:-5}
+      - USE_CACHE=${USE_CACHE:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Redis 缓存服务（可选）
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    profiles:
+      - redis  # 使用 docker-compose --profile redis up 启动
+
+volumes:
+  redis_data:
